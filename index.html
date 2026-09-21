@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FMCG Sales</title>
+<style>
+  :root {
+    --brand: #1F7A3D;
+    --dark: #111111;
+    --bg: #f5f6f7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: var(--bg); color: #222; padding-bottom: 80px; }
+  header { background: var(--dark); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header .brand { font-weight: 700; font-size: 18px; }
+  header .brand span { color: var(--brand); }
+  .user-info { display: flex; align-items: center; gap: 10px; font-size: 13px; flex-wrap: wrap; }
+  .role-badge { background: var(--brand); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .role-badge.admin { background: #333; border: 1px solid #666; }
+  a.link-btn { color: #cde; text-decoration: underline; cursor: pointer; font-size: 12px; }
+  .search-bar { position: sticky; top: 0; z-index: 10; background: #fff; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+  .search-bar input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 16px; }
+  .card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+  .card img { width: 100%; height: 120px; object-fit: cover; background: #eee; }
+  .card-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .card-body .cat { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
+  .card-body .name { font-size: 13px; font-weight: 600; line-height: 1.3; min-height: 34px; }
+  .card-body .price { color: var(--brand); font-weight: 700; font-size: 14px; }
+  .card-body .stock { font-size: 11px; color: #888; }
+  .card-body button { margin-top: auto; background: var(--brand); color: #fff; border: none; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .card-body button:disabled { background: #ccc; cursor: not-allowed; }
+  .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--dark); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; z-index: 20; }
+  .cart-bar strong { color: var(--brand); }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
+  .overlay.center { align-items: center; }
+  .sheet { background: #fff; width: 100%; max-width: 480px; max-height: 88vh; overflow-y: auto; border-radius: 16px 16px 0 0; padding: 20px; }
+  .overlay.center .sheet { border-radius: 16px; }
+  .sheet h2 { margin-top: 0; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+  .field input, .field select, .field textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .btn-primary { background: var(--brand); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 700; width: 100%; cursor: pointer; }
+  .btn-secondary { background: #eee; color: #333; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; width: 100%; cursor: pointer; margin-top: 8px; }
+  .btn-whatsapp { background: #25D366; color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 700; width: 100%; cursor: pointer; margin-top: 8px; display: none; }
+  .cart-line { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; gap: 8px; }
+  .cart-line .info { flex: 1; }
+  .cart-line .info .n { font-size: 13px; font-weight: 600; }
+  .cart-line .info .p { font-size: 12px; color: #888; }
+  .qty-control { display: flex; align-items: center; gap: 6px; }
+  .qty-control button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #ddd; background: #fff; font-size: 16px; cursor: pointer; }
+  .summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .summary-row.total { font-weight: 700; font-size: 16px; border-top: 1px solid #eee; margin-top: 8px; padding-top: 8px; }
+  .doc-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+  .doc-toggle label { flex: 1; text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .doc-toggle input { display: none; }
+  .doc-toggle input:checked + span { color: var(--brand); }
+  .doc-toggle label.active { border-color: var(--brand); background: #eef7f0; }
+  .guest-note { font-size: 12px; color: #888; margin-bottom: 14px; }
+  .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+  .msg.error { background: #fdecea; color: #b3261e; }
+  .msg.success { background: #e6f4ea; color: #1e7e34; }
+  .apply-link { font-size: 12px; }
+  .apply-link.pending { color: #d4a017; }
+  .empty-state { text-align: center; padding: 40px 16px; color: #888; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">FMCG <span>Sales</span></div>
+  <div class="user-info">
+    <span id="userLabel"></span>
+    <span id="roleBadges"></span>
+    <a class="link-btn apply-link" id="applyLink" onclick="openApply()" style="display:none;"></a>
+    <a class="link-btn" id="switchLink" onclick="switchEmail()" style="display:none;">Switch account</a>
+  </div>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="Search products..." oninput="renderGrid()">
+</div>
+
+<div id="grid" class="grid"></div>
+
+<div id="cartBar" class="cart-bar" style="display:none;" onclick="openCart()">
+  <span id="cartSummary">0 items</span>
+  <strong>View Cart →</strong>
+</div>
+
+<!-- Login overlay -->
+<div id="loginOverlay" class="overlay center" style="display:none;">
+  <div class="sheet">
+    <h2>Welcome to FMCG Sales</h2>
+    <p style="font-size:13px;color:#666;">Enter your email to continue. Staff/agent accounts unlock invoicing and pricing tools.</p>
+    <div class="field">
+      <label>Email address</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com">
+    </div>
+    <button class="btn-primary" onclick="submitLogin()">Continue</button>
+    <button class="btn-secondary" onclick="continueAsGuest()">Continue without logging in</button>
+  </div>
+</div>
+
+<!-- Cart / checkout overlay -->
+<div id="cartOverlay" class="overlay" style="display:none;">
+  <div class="sheet">
+    <h2>In Cart</h2>
+    <div id="cartMsg"></div>
+    <div id="docToggleWrap" class="doc-toggle" style="display:none;">
+      <label id="quoteLabel" onclick="setDocType('quote')"><input type="radio" name="docType" value="quote"><span>Quotation</span></label>
+      <label id="invoiceLabel" onclick="setDocType('invoice')"><input type="radio" name="docType" value="invoice"><span>Invoice</span></label>
+    </div>
+    <p class="guest-note" id="guestNote" style="display:none;">As a guest you can request a Quotation. Staff/agents can also issue Invoices.</p>
+    <div id="cartItems"></div>
+    <div class="field">
+      <label id="emailLabel">Email to receive PDF</label>
+      <input type="email" id="recipientEmail" placeholder="customer@example.com">
+    </div>
+    <div class="field">
+      <label>Customer name (optional)</label>
+      <input type="text" id="customerName" placeholder="Customer / business name">
+    </div>
+    <div class="field" id="commentsField" style="display:none;">
+      <label>Comments (optional)</label>
+      <textarea id="commentsInput" placeholder="Any notes for this document..."></textarea>
+    </div>
+    <div class="summary-row"><span>Total Units</span><span id="summaryUnits">0</span></div>
+    <div class="summary-row total"><span>Total</span><span id="summaryTotal">R0.00</span></div>
+    <button class="btn-primary" onclick="submitOrder()">Submit</button>
+    <button class="btn-whatsapp" id="whatsappBtn" onclick="openWhatsapp()">Follow up on WhatsApp</button>
+    <button class="btn-secondary" onclick="closeCart()">Close</button>
+  </div>
+</div>
+
+<!-- Apply to be agent overlay -->
+<div id="applyOverlay" class="overlay center" style="display:none;">
+  <div class="sheet">
+    <h2>Apply to be an Agent</h2>
+    <div id="applyMsg"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="applyEmail" disabled>
+    </div>
+    <div class="field">
+      <label>Full name</label>
+      <input type="text" id="applyName" placeholder="Your name">
+    </div>
+    <div class="field">
+      <label>Cell number</label>
+      <input type="text" id="applyCell" placeholder="082 000 0000">
+    </div>
+    <button class="btn-primary" onclick="submitApplication()">Submit Application</button>
+    <button class="btn-secondary" onclick="closeApply()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ==========================================================================
+// CONFIG — update API_BASE_URL after each Apps Script deployment (only
+// changes if you create a brand NEW deployment, not a new version of an
+// existing one).
+// ==========================================================================
+const API_BASE_URL = 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE';
+const STORAGE_KEY = 'fmcgsales_user_email';
+
+let PRODUCTS = [];
+let CART = {}; // sku -> {sku, name, price, qty, maxQty}
+let USER_EMAIL = '';
+let USER_ROLE = 'guest';
+let DOC_TYPE = 'quote';
+let LAST_RESULT = null;
+
+// ---- API helpers ----
+async function apiGet(action, params) {
+  const url = new URL(API_BASE_URL);
+  url.searchParams.set('action', action);
+  Object.keys(params || {}).forEach(k => url.searchParams.set(k, params[k]));
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Request failed');
+  return json.data;
+}
+
+async function apiPost(action, payload) {
+  const res = await fetch(API_BASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, payload })
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Request failed');
+  return json.data;
+}
+
+// ---- Init ----
+function init() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    loadUserContext(saved);
+  } else {
+    document.getElementById('loginOverlay').style.display = 'flex';
+    loadProducts();
+  }
+}
+
+function submitLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email || !email.includes('@')) { alert('Please enter a valid email.'); return; }
+  localStorage.setItem(STORAGE_KEY, email);
+  document.getElementById('loginOverlay').style.display = 'none';
+  loadUserContext(email);
+}
+
+function continueAsGuest() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  loadProducts();
+}
+
+function switchEmail() {
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ---- Products ----
+async function loadProducts() {
+  try {
+    PRODUCTS = await apiGet('getProducts', USER_EMAIL ? { email: USER_EMAIL } : {});
+    renderGrid();
+  } catch (err) {
+    document.getElementById('grid').innerHTML = '<div class="empty-state">Could not load products: ' + err.message + '</div>';
+  }
+}
+
+async function loadUserContext(email) {
+  try {
+    const ctx = await apiGet('getUserContext', { email });
+    onUserContext(ctx);
+  } catch (err) {
+    console.error(err);
+  }
+  loadProducts();
+}
+
+function onUserContext(ctx) {
+  USER_EMAIL = ctx.email;
+  USER_ROLE = ctx.role;
+
+  document.getElementById('userLabel').textContent = ctx.name || ctx.email || '';
+  document.getElementById('switchLink').style.display = ctx.email ? 'inline' : 'none';
+
+  let badges = '';
+  if (ctx.role === 'owner') badges += '<span class="role-badge">Owner</span>';
+  if (ctx.role === 'agent') badges += '<span class="role-badge">Agent</span>';
+  document.getElementById('roleBadges').innerHTML = badges;
+
+  const applyLink = document.getElementById('applyLink');
+  if (ctx.role === 'owner' || ctx.role === 'agent') {
+    applyLink.style.display = 'none';
+  } else if (ctx.hasPendingApplication) {
+    applyLink.style.display = 'inline';
+    applyLink.textContent = 'Application pending';
+    applyLink.classList.add('pending');
+    applyLink.onclick = null;
+  } else {
+    applyLink.style.display = 'inline';
+    applyLink.textContent = 'Apply to be an Agent';
+    applyLink.classList.remove('pending');
+    applyLink.onclick = openApply;
+  }
+
+  const canInvoice = ctx.role === 'owner' || ctx.role === 'agent';
+  document.getElementById('docToggleWrap').style.display = canInvoice ? 'flex' : 'none';
+  document.getElementById('guestNote').style.display = canInvoice ? 'none' : 'block';
+  document.getElementById('commentsField').style.display = canInvoice ? 'block' : 'none';
+
+  const emailField = document.getElementById('recipientEmail');
+  if (ctx.email) emailField.value = ctx.email;
+  document.getElementById('emailLabel').textContent = canInvoice
+    ? 'Email to receive PDF (optional)'
+    : 'Email to receive PDF (required)';
+
+  setDocType('quote');
+}
+
+// ---- Grid ----
+function renderGrid() {
+  const query = document.getElementById('searchInput').value.trim().toLowerCase();
+  const grid = document.getElementById('grid');
+  const filtered = PRODUCTS.filter(p =>
+    !query || p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query) || (p.category || '').toLowerCase().includes(query)
+  );
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No products found.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const inCart = CART[p.sku];
+    const outOfStock = p.qty <= 0;
+    return '<div class="card">' +
+      '<img src="' + (p.image || '') + '" alt="' + escapeHtml(p.name) + '" onerror="this.src=\'https://placehold.co/300x200?text=No+Image\'">' +
+      '<div class="card-body">' +
+      '<div class="cat">' + escapeHtml(p.category || '') + '</div>' +
+      '<div class="name">' + escapeHtml(p.name) + '</div>' +
+      '<div class="price">R' + p.price.toFixed(2) + '</div>' +
+      '<div class="stock">' + (outOfStock ? 'Out of stock' : p.qty + ' in stock') + '</div>' +
+      '<button onclick="addToCart(\'' + p.sku + '\')" ' + (outOfStock ? 'disabled' : '') + '>' +
+      (inCart ? 'In cart (' + inCart.qty + ')' : 'Add to cart') +
+      '</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+}
+
+// ---- Cart ----
+function addToCart(sku) {
+  const product = PRODUCTS.find(p => p.sku === sku);
+  if (!product) return;
+  if (CART[sku]) {
+    CART[sku].qty += 1;
+  } else {
+    CART[sku] = { sku: product.sku, name: product.name, price: product.price, qty: 1, maxQty: product.qty };
+  }
+  updateCartBar();
+  renderGrid();
+}
+
+function updateQty(sku, delta) {
+  if (!CART[sku]) return;
+  CART[sku].qty += delta;
+  if (CART[sku].qty <= 0) delete CART[sku];
+  updateCartBar();
+  renderCartItems();
+  updateSummary();
+  renderGrid();
+}
+
+function removeItem(sku) {
+  delete CART[sku];
+  updateCartBar();
+  renderCartItems();
+  updateSummary();
+  renderGrid();
+}
+
+function updateCartBar() {
+  const items = Object.values(CART);
+  const bar = document.getElementById('cartBar');
+  if (items.length === 0) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('cartSummary').textContent = totalUnits + ' item' + (totalUnits === 1 ? '' : 's') + ' in cart';
+}
+
+function openCart() {
+  renderCartItems();
+  updateSummary();
+  document.getElementById('cartMsg').innerHTML = '';
+  document.getElementById('whatsappBtn').style.display = 'none';
+  document.getElementById('cartOverlay').style.display = 'flex';
+}
+
+function closeCart() {
+  document.getElementById('cartOverlay').style.display = 'none';
+}
+
+function renderCartItems() {
+  const items = Object.values(CART);
+  const container = document.getElementById('cartItems');
+  if (items.length === 0) {
+    container.innerHTML = '<p style="color:#888;font-size:13px;">Your cart is empty.</p>';
+    return;
+  }
+  container.innerHTML = items.map(i =>
+    '<div class="cart-line">' +
+    '<div class="info"><div class="n">' + escapeHtml(i.name) + '</div><div class="p">R' + i.price.toFixed(2) + ' each</div></div>' +
+    '<div class="qty-control">' +
+    '<button onclick="updateQty(\'' + i.sku + '\', -1)">−</button>' +
+    '<span>' + i.qty + '</span>' +
+    '<button onclick="updateQty(\'' + i.sku + '\', 1)">+</button>' +
+    '</div></div>'
+  ).join('');
+}
+
+function updateSummary() {
+  const items = Object.values(CART);
+  const totalUnits = items.reduce((s, i) => s + i.qty, 0);
+  const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+  document.getElementById('summaryUnits').textContent = totalUnits;
+  document.getElementById('summaryTotal').textContent = 'R' + total.toFixed(2);
+}
+
+function setDocType(type) {
+  const canInvoice = USER_ROLE === 'owner' || USER_ROLE === 'agent';
+  DOC_TYPE = (canInvoice && type === 'invoice') ? 'invoice' : 'quote';
+  document.getElementById('quoteLabel').classList.toggle('active', DOC_TYPE === 'quote');
+  document.getElementById('invoiceLabel').classList.toggle('active', DOC_TYPE === 'invoice');
+  document.querySelectorAll('input[name="docType"]').forEach(r => r.checked = r.value === DOC_TYPE);
+}
+
+// ---- Submit order ----
+async function submitOrder() {
+  const items = Object.values(CART);
+  if (items.length === 0) { showMsg('cartMsg', 'Your cart is empty.', 'error'); return; }
+
+  const payload = {
+    docType: DOC_TYPE,
+    userEmail: USER_EMAIL,
+    customerName: document.getElementById('customerName').value.trim(),
+    recipientEmail: document.getElementById('recipientEmail').value.trim(),
+    comments: document.getElementById('commentsInput').value.trim(),
+    items: items.map(i => ({ sku: i.sku, qty: i.qty }))
+  };
+
+  showMsg('cartMsg', 'Submitting...', 'success');
+  try {
+    const result = await apiPost('submitOrder', payload);
+    onSubmitSuccess(result);
+  } catch (err) {
+    onSubmitError(err);
+  }
+}
+
+function onSubmitSuccess(result) {
+  LAST_RESULT = result;
+  let msg = (result.docType === 'invoice' ? 'Invoice' : 'Quotation') + ' ' + result.docNumber + ' created!';
+  if (result.emailSent) msg += ' A copy has been emailed.';
+  showMsg('cartMsg', msg, 'success');
+
+  const link = document.createElement('a');
+  link.href = 'data:application/pdf;base64,' + result.pdfBase64;
+  link.download = result.fileName;
+  link.click();
+
+  const whatsappBtn = document.getElementById('whatsappBtn');
+  if (result.whatsappLink) {
+    whatsappBtn.style.display = 'block';
+  } else {
+    whatsappBtn.style.display = 'none';
+  }
+
+  CART = {};
+  document.getElementById('commentsInput').value = '';
+  updateCartBar();
+  renderCartItems();
+  updateSummary();
+  loadProducts();
+}
+
+function onSubmitError(err) {
+  showMsg('cartMsg', err.message || 'Something went wrong.', 'error');
+}
+
+function openWhatsapp() {
+  if (LAST_RESULT && LAST_RESULT.whatsappLink) {
+    window.open(LAST_RESULT.whatsappLink, '_blank');
+  }
+}
+
+function showMsg(elId, text, type) {
+  document.getElementById(elId).innerHTML = '<div class="msg ' + type + '">' + escapeHtml(text) + '</div>';
+}
+
+// ---- Apply to be agent ----
+function openApply() {
+  document.getElementById('applyEmail').value = USER_EMAIL;
+  document.getElementById('applyMsg').innerHTML = '';
+  document.getElementById('applyOverlay').style.display = 'flex';
+}
+
+function closeApply() {
+  document.getElementById('applyOverlay').style.display = 'none';
+}
+
+async function submitApplication() {
+  const name = document.getElementById('applyName').value.trim();
+  const cell = document.getElementById('applyCell').value.trim();
+  if (!name || !cell) { showMsg('applyMsg', 'Please fill in your name and cell number.', 'error'); return; }
+
+  try {
+    await apiPost('applyToBeAgent', { name, email: USER_EMAIL, cell });
+    showMsg('applyMsg', 'Application submitted! You will be emailed once approved.', 'success');
+    setTimeout(() => { closeApply(); loadUserContext(USER_EMAIL); }, 1500);
+  } catch (err) {
+    showMsg('applyMsg', err.message || 'Something went wrong.', 'error');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
