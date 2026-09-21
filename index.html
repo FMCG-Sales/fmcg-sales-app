@@ -23,8 +23,14 @@
   .search-bar input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 16px; }
   .card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
-  .card .img-frame { width: 100%; aspect-ratio: 1 / 1; background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; }
+  .card-banner { background: var(--dark); color: #fff; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em; padding: 7px 8px; line-height: 1.25; display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+  .card-banner .unit { font-size: 10.5px; font-weight: 700; opacity: 0.85; }
+  .card .img-frame { position: relative; width: 100%; aspect-ratio: 1 / 1; background: #f0f0f0; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: zoom-in; }
   .card .img-frame img { width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
+  .promo-ribbon { position: absolute; left: 6px; top: 6px; right: 6px; background: #f5c400; color: #111; font-weight: 800; font-size: 9.5px; text-align: center; text-transform: uppercase; letter-spacing: 0.01em; padding: 4px 5px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); line-height: 1.2; }
+  .price-badge { position: absolute; right: 7px; bottom: 7px; background: #d0021b; color: #fff; border-radius: 10px; padding: 6px 9px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.28); min-width: 46px; }
+  .price-badge .amount { font-weight: 800; font-size: 16px; line-height: 1; white-space: nowrap; }
+  .price-badge .each { font-size: 9px; font-weight: 700; opacity: 0.9; margin-top: 2px; letter-spacing: 0.02em; }
 
   /* ---- Lightbox ---- */
   .lightbox { position: fixed; inset: 0; background: rgba(10,10,10,0.94); z-index: 100; display: none; align-items: center; justify-content: center; touch-action: none; overscroll-behavior: contain; }
@@ -191,7 +197,7 @@
 // existing one).
 // ==========================================================================
 const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbw4Jj_eYLcb5M0AVDzxsiBUVNLVfBNwPnMnEXb1_RxCgE2VleKB-PofIGtPxo-zNO1PIg/exec';
-const STORAGE_KEY = 'fmcgsales_user_email';
+const STORAGE_KEY = 'barbershoptest1234@gmail.com';
 
 let PRODUCTS = [];
 let CART = {}; // sku -> {sku, name, price, qty, maxQty}
@@ -331,12 +337,20 @@ function renderGrid() {
   grid.innerHTML = filtered.map(p => {
     const inCart = CART[p.sku];
     const outOfStock = p.qty <= 0;
+    const hasPromo = !!(p.promoText && p.promoText.trim());
     return '<div class="card">' +
-      '<div class="img-frame" onclick="openLightbox(\'' + p.sku + '\')"><img src="' + (p.image || '') + '" alt="' + escapeHtml(p.name) + '" loading="lazy" onerror="this.src=\'https://placehold.co/300x200?text=No+Image\'"></div>' +
+      '<div class="card-banner">' + escapeHtml(p.name) +
+      (p.unit ? ' <span class="unit">' + escapeHtml(p.unit) + '</span>' : '') +
+      '</div>' +
+      '<div class="img-frame" onclick="openLightbox(\'' + p.sku + '\')">' +
+      '<img src="' + (p.image || '') + '" alt="' + escapeHtml(p.name) + '" loading="lazy" onerror="this.src=\'https://placehold.co/300x200?text=No+Image\'">' +
+      (hasPromo ? '<div class="promo-ribbon">' + escapeHtml(p.promoText) + '</div>' : '') +
+      '<div class="price-badge"><div class="amount">R' + p.price.toFixed(2) + '</div>' +
+      (hasPromo ? '' : '<div class="each">each</div>') +
+      '</div>' +
+      '</div>' +
       '<div class="card-body">' +
       '<div class="cat">' + escapeHtml(p.category || '') + '</div>' +
-      '<div class="name">' + escapeHtml(p.name) + '</div>' +
-      '<div class="price">R' + p.price.toFixed(2) + '</div>' +
       '<div class="stock">' + (outOfStock ? 'Out of stock' : p.qty + ' in stock') + '</div>' +
       '<button onclick="addToCart(\'' + p.sku + '\')" ' + (outOfStock ? 'disabled' : '') + '>' +
       (inCart ? 'In cart (' + inCart.qty + ')' : 'Add to cart') +
@@ -379,7 +393,9 @@ function showLightboxImage() {
   const img = document.getElementById('lightboxImg');
   img.src = p.image || 'https://placehold.co/600x600?text=No+Image';
   img.alt = p.name;
-  document.getElementById('lightboxCaption').textContent = p.name + ' — R' + p.price.toFixed(2);
+  const captionParts = [p.name + (p.unit ? ' (' + p.unit + ')' : '')];
+  captionParts.push(p.promoText ? (p.promoText + ' — R' + p.price.toFixed(2)) : ('R' + p.price.toFixed(2) + ' each'));
+  document.getElementById('lightboxCaption').textContent = captionParts.join(' — ');
   resetZoom();
 }
 
