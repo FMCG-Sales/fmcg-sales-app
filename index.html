@@ -19,8 +19,13 @@
   .role-badge { background: var(--brand); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .role-badge.admin { background: #333; border: 1px solid #666; }
   a.link-btn { color: #cde; text-decoration: underline; cursor: pointer; font-size: 12px; }
-  .search-bar { position: sticky; top: 0; z-index: 10; background: #fff; padding: 10px 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+  .toolbar { position: sticky; top: 0; z-index: 10; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+  .search-bar { padding: 10px 16px; }
   .search-bar input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  .category-bar { padding: 0 16px 10px; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .category-bar::-webkit-scrollbar { display: none; }
+  .category-chip { flex: 0 0 auto; padding: 6px 14px; border-radius: 999px; border: 1px solid #ddd; background: #fff; color: #555; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .category-chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 16px; }
   .card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
   .card-banner { background: var(--dark); color: #fff; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.02em; padding: 7px 8px; line-height: 1.25; display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
@@ -101,8 +106,11 @@
   </div>
 </header>
 
-<div class="search-bar">
-  <input type="text" id="searchInput" placeholder="Search products..." oninput="renderGrid()">
+<div class="toolbar">
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search products..." oninput="renderGrid()">
+  </div>
+  <div id="categoryBar" class="category-bar"></div>
 </div>
 
 <div id="grid" class="grid"></div>
@@ -205,6 +213,7 @@ let USER_EMAIL = '';
 let USER_ROLE = 'guest';
 let DOC_TYPE = 'quote';
 let LAST_RESULT = null;
+let ACTIVE_CATEGORY = 'All';
 
 // ---- API helpers ----
 async function apiGet(action, params) {
@@ -262,6 +271,7 @@ function switchEmail() {
 async function loadProducts() {
   try {
     PRODUCTS = await apiGet('getProducts', USER_EMAIL ? { email: USER_EMAIL } : {});
+    renderCategoryBar();
     renderGrid();
   } catch (err) {
     document.getElementById('grid').innerHTML = '<div class="empty-state">Could not load products: ' + err.message + '</div>';
@@ -319,16 +329,44 @@ function onUserContext(ctx) {
   setDocType('quote');
 }
 
+// ---- Category chips ----
+function renderCategoryBar() {
+  const bar = document.getElementById('categoryBar');
+  const categories = Array.from(new Set(
+    PRODUCTS.map(p => (p.category || '').trim()).filter(c => c)
+  )).sort((a, b) => a.localeCompare(b));
+
+  // If the previously active category no longer exists in the catalog, reset to All.
+  if (ACTIVE_CATEGORY !== 'All' && categories.indexOf(ACTIVE_CATEGORY) === -1) {
+    ACTIVE_CATEGORY = 'All';
+  }
+
+  const chips = ['All'].concat(categories);
+  bar.innerHTML = chips.map(c =>
+    '<button class="category-chip' + (c === ACTIVE_CATEGORY ? ' active' : '') + '" onclick="setCategory(\'' + c.replace(/'/g, "\\'") + '\')">' +
+    escapeHtml(c) + '</button>'
+  ).join('');
+}
+
+function setCategory(category) {
+  ACTIVE_CATEGORY = category;
+  renderCategoryBar();
+  renderGrid();
+}
+
 // ---- Grid ----
 function renderGrid() {
   const query = document.getElementById('searchInput').value.trim().toLowerCase();
   const grid = document.getElementById('grid');
-  const filtered = PRODUCTS.filter(p =>
-    !query || p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query) || (p.category || '').toLowerCase().includes(query)
-  );
+  const filtered = PRODUCTS.filter(p => {
+    const matchesQuery = !query || p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query) || (p.category || '').toLowerCase().includes(query);
+    const matchesCategory = ACTIVE_CATEGORY === 'All' || (p.category || '').trim() === ACTIVE_CATEGORY;
+    return matchesQuery && matchesCategory;
+  });
 
   if (filtered.length === 0) {
     grid.innerHTML = '<div class="empty-state">No products found.</div>';
+    LIGHTBOX_LIST = [];
     return;
   }
 
