@@ -227,7 +227,7 @@
 // existing one).
 // ==========================================================================
 const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbw4Jj_eYLcb5M0AVDzxsiBUVNLVfBNwPnMnEXb1_RxCgE2VleKB-PofIGtPxo-zNO1PIg/exec';
-const STORAGE_KEY = 'fmcgsales_user_email';
+const STORAGE_KEY = 'barbershoptest1234@gmail.com';
 
 let PRODUCTS = [];
 let CART = {}; // sku -> {sku, name, price, qty, maxQty}
@@ -432,6 +432,7 @@ let LB_POINTERS = {}; // active touch points by identifier
 let LB_PINCH_START_DIST = 0, LB_PINCH_START_SCALE = 1;
 let LB_DRAG_START = null; // {x, y, panX, panY} for single-finger pan/swipe
 let LB_LAST_TAP_TIME = 0;
+let LB_HISTORY_PUSHED = false; // whether we've pushed a history entry for the open lightbox
 
 function openLightbox(sku) {
   const idx = LIGHTBOX_LIST.findIndex(p => p.sku === sku);
@@ -440,12 +441,20 @@ function openLightbox(sku) {
   showLightboxImage();
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Push a history entry so the phone's back button closes the lightbox
+  // instead of leaving the site (see popstate handler in setupLightboxGestures).
+  history.pushState({ fmcgLightbox: true }, '');
+  LB_HISTORY_PUSHED = true;
 }
 
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
   document.body.style.overflow = '';
   resetZoom();
+  if (LB_HISTORY_PUSHED) {
+    LB_HISTORY_PUSHED = false;
+    history.back(); // unwind the history entry openLightbox() pushed
+  }
 }
 
 function showLightboxImage() {
@@ -509,6 +518,18 @@ function setupLightboxGestures() {
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') lightboxNav(-1);
     if (e.key === 'ArrowRight') lightboxNav(1);
+  });
+
+  // Phone/browser back button: since openLightbox() pushed a history entry,
+  // the back button lands here first (a popstate) instead of leaving the
+  // site — just close the lightbox rather than navigating away.
+  window.addEventListener('popstate', () => {
+    if (document.getElementById('lightbox').classList.contains('open')) {
+      LB_HISTORY_PUSHED = false; // this history entry was just consumed by the back navigation itself
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow = '';
+      resetZoom();
+    }
   });
 
   // Double-tap / double-click to toggle zoom.
